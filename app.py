@@ -1,3 +1,4 @@
+import html
 import json
 import os
 import socket
@@ -150,6 +151,15 @@ TEST_CASES = [
         "expect_status": 400,
         "expect_json": {"status": "Failed", "message": "quantity must be a positive integer"},
     },
+    {
+        "name": "reject request when all parameters are missing",
+        "method": "POST",
+        "path": "/api/orders",
+        "headers": {},
+        "body": {},
+        "expect_status": 401,
+        "expect_json": {"status": "Failed", "message": "Invalid or missing X-Api-Key"},
+    },
 ]
 
 
@@ -248,9 +258,77 @@ def _matches(expected, actual):
     return all(key in actual and _matches(value, actual[key]) for key, value in expected.items())
 
 
+def _xml(value):
+    return html.escape(str(value), quote=True)
+
+
+def _write_junit(path, results):
+    failures = sum(1 for item in results if item["result"] != "passed")
+    lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        f'<testsuite name="order-api" tests="{len(results)}" failures="{failures}" errors="0">',
+    ]
+    for item in results:
+        lines.append(f'  <testcase classname="order-api" name="{_xml(item["name"])}">')
+        if item["result"] != "passed":
+            message = f'expected HTTP {item["expectedStatus"]}, got {item["actualStatus"]}'
+            detail = json.dumps(item["response"])
+            lines.append(f'    <failure message="{_xml(message)}">{_xml(detail)}</failure>')
+        lines.append("  </testcase>")
+    lines.append("</testsuite>")
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write("\n".join(lines) + "\n")
+
+
+def _write_sheet(path, report):
+    rows = []
+    for item in report["cases"]:
+        mark = "Pass" if item["result"] == "passed" else "Fail"
+        rows.append(
+            "<tr>"
+            f"<td>{html.escape(item['name'])}</td>"
+            f"<td>{html.escape(item['method'])}</td>"
+            f"<td>{html.escape(item['path'])}</td>"
+            f"<td>{item['expectedStatus']}</td>"
+            f"<td>{item['actualStatus']}</td>"
+            f"<td>{mark}</td>"
+            "</tr>"
+        )
+    page = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Order API test cases</title>
+  <style>
+    body {{ font-family: Segoe UI, sans-serif; margin: 24px; }}
+    table {{ border-collapse: collapse; width: 100%; }}
+    th, td {{ border: 1px solid #ccc; padding: 8px; text-align: left; }}
+    th {{ background: #1f4b99; color: #fff; }}
+  </style>
+</head>
+<body>
+  <h1>Order API test cases</h1>
+  <p>Total {report["total"]} · Passed {report["passed"]} · Failed {report["failed"]}</p>
+  <table>
+    <thead>
+      <tr><th>Case</th><th>Method</th><th>Path</th><th>Expected</th><th>Actual</th><th>Review</th></tr>
+    </thead>
+    <tbody>
+      {''.join(rows)}
+    </tbody>
+  </table>
+</body>
+</html>
+"""
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write(page)
+
+
 def run_tests():
     root = os.path.dirname(os.path.abspath(__file__))
     results_path = os.path.join(root, "test-results.json")
+    junit_path = os.path.join(root, "test-results.xml")
+    sheet_path = os.path.join(root, "test-report.html")
     port = _free_port()
     env = os.environ.copy()
     env["PORT"] = str(port)
@@ -298,8 +376,12 @@ def run_tests():
     with open(results_path, "w", encoding="utf-8") as handle:
         json.dump(report, handle, indent=2)
         handle.write("\n")
+    _write_junit(junit_path, results)
+    _write_sheet(sheet_path, report)
     print(json.dumps({"total": report["total"], "passed": report["passed"], "failed": report["failed"]}))
     print(f"Wrote {results_path}")
+    print(f"Wrote {junit_path}")
+    print(f"Wrote {sheet_path}")
     return 0 if report["failed"] == 0 else 1
 
 
