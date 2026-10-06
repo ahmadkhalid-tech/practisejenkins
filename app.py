@@ -15,51 +15,75 @@ app = Flask(__name__)
 VALID_API_KEY = "demo-key"
 _order_seq = 1000
 
+SITE_CSS = """
+body { margin: 0; font-family: "Segoe UI", sans-serif; background: #eef1f6; color: #1c2430; }
+header { background: #16325c; color: #fff; padding: 20px 32px; }
+header h1 { margin: 0; font-size: 22px; }
+header p { margin: 6px 0 0; }
+.wrap { max-width: 980px; margin: 24px auto 40px; padding: 0 16px; }
+.stats { display: flex; gap: 12px; margin-bottom: 16px; }
+.stat, .panel { background: #fff; border: 1px solid #d5dbe6; }
+.stat { flex: 1; padding: 14px 18px; }
+.stat b { display: block; font-size: 24px; margin-top: 4px; }
+.layout { display: flex; gap: 16px; align-items: flex-start; }
+.panel { padding: 18px; }
+.panel.grow { flex: 2; }
+.panel.side { flex: 1; }
+h2 { margin: 0 0 12px; font-size: 16px; }
+label { display: block; margin-bottom: 12px; font-size: 14px; }
+input { display: block; width: 100%; box-sizing: border-box; margin-top: 4px; padding: 8px 10px; border: 1px solid #c5c9d2; font: inherit; }
+button { background: #16325c; color: #fff; border: 0; padding: 10px 16px; font: inherit; cursor: pointer; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #e4e8ef; }
+th { background: #f4f7fb; }
+.pass { color: #0d7a3f; font-weight: 700; }
+.fail { color: #b42318; font-weight: 700; }
+pre { overflow: auto; background: #f7f8fa; padding: 12px; margin: 0; }
+.side p, .side li { line-height: 1.5; }
+code { background: #f4f7fb; padding: 1px 4px; }
+"""
+
 PAGE = """<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Order API</title>
-  <style>
-    :root { color-scheme: light; font-family: "Segoe UI", sans-serif; background: #f4f5f7; color: #1c1e21; }
-    body { margin: 0; }
-    main { max-width: 640px; margin: 40px auto; padding: 0 16px 48px; }
-    h1 { margin-bottom: 8px; }
-    .lead { margin-top: 0; line-height: 1.5; }
-    form, #result { background: #fff; border: 1px solid #d8dbe2; padding: 16px; }
-    fieldset { border: 0; margin: 0 0 16px; padding: 0; }
-    legend { font-weight: 600; margin-bottom: 8px; }
-    label { display: block; margin-bottom: 12px; font-size: 14px; }
-    input { display: block; width: 100%; box-sizing: border-box; margin-top: 4px; padding: 8px 10px; border: 1px solid #c5c9d2; font: inherit; }
-    button { background: #1f4b99; color: #fff; border: 0; padding: 10px 16px; font: inherit; cursor: pointer; }
-    #result { margin-top: 20px; }
-    pre { overflow: auto; background: #f7f8fa; padding: 12px; margin: 0; }
-  </style>
+  <link rel="stylesheet" href="/site.css">
 </head>
 <body>
-  <main>
-    <h1>Create order</h1>
-    <p class="lead">This page calls <code>POST /api/orders</code>. The API requires two headers and a JSON body.</p>
-    <form id="order-form">
-      <fieldset>
-        <legend>Headers</legend>
-        <label>X-Api-Key <input id="api-key" value="demo-key" autocomplete="off" required></label>
-        <label>X-Channel <input id="channel" value="WEB" autocomplete="off" required></label>
-      </fieldset>
-      <fieldset>
-        <legend>Body</legend>
-        <label>item <input id="item" value="notebook" required></label>
-        <label>quantity <input id="quantity" type="number" min="1" value="2" required></label>
-      </fieldset>
-      <button type="submit">Send request</button>
-    </form>
-    <section id="result" hidden>
-      <h2>Response</h2>
-      <p id="result-status"></p>
-      <pre id="result-body"></pre>
-    </section>
-  </main>
+  <header>
+    <h1>Order API</h1>
+    <p>Create an order with the required headers and JSON body.</p>
+  </header>
+  <div class="wrap">
+    <div class="layout">
+      <section class="panel grow">
+        <h2>Request</h2>
+        <form id="order-form">
+          <label>X-Api-Key <input id="api-key" value="demo-key" autocomplete="off" required></label>
+          <label>X-Channel <input id="channel" value="WEB" autocomplete="off" required></label>
+          <label>item <input id="item" value="notebook" required></label>
+          <label>quantity <input id="quantity" type="number" min="1" value="2" required></label>
+          <button type="submit">Send request</button>
+        </form>
+        <section id="result" hidden>
+          <h2>Response</h2>
+          <p id="result-status"></p>
+          <pre id="result-body"></pre>
+        </section>
+      </section>
+      <aside class="panel side">
+        <h2>Contract</h2>
+        <p><code>POST /api/orders</code></p>
+        <ul>
+          <li>Header <code>X-Api-Key</code>: demo-key</li>
+          <li>Header <code>X-Channel</code>: WEB or MOBILE</li>
+          <li>Body <code>item</code> and a positive <code>quantity</code></li>
+        </ul>
+      </aside>
+    </div>
+  </div>
   <script>
     const form = document.getElementById("order-form");
     const result = document.getElementById("result");
@@ -172,6 +196,11 @@ def home():
     return PAGE
 
 
+@app.get("/site.css")
+def site_css():
+    return SITE_CSS, 200, {"Content-Type": "text/css; charset=utf-8"}
+
+
 @app.get("/api/health")
 def health():
     return jsonify({"status": "ok"})
@@ -280,10 +309,12 @@ def _write_junit(path, results):
         handle.write("\n".join(lines) + "\n")
 
 
-def _write_sheet(path, report):
+def _write_sheet(folder, report):
+    os.makedirs(folder, exist_ok=True)
     rows = []
     for item in report["cases"]:
         mark = "Pass" if item["result"] == "passed" else "Fail"
+        css = "pass" if mark == "Pass" else "fail"
         rows.append(
             "<tr>"
             f"<td>{html.escape(item['name'])}</td>"
@@ -291,7 +322,7 @@ def _write_sheet(path, report):
             f"<td>{html.escape(item['path'])}</td>"
             f"<td>{item['expectedStatus']}</td>"
             f"<td>{item['actualStatus']}</td>"
-            f"<td>{mark}</td>"
+            f"<td class=\"{css}\">{mark}</td>"
             "</tr>"
         )
     page = f"""<!DOCTYPE html>
@@ -299,36 +330,48 @@ def _write_sheet(path, report):
 <head>
   <meta charset="utf-8">
   <title>Order API test cases</title>
-  <style>
-    body {{ font-family: Segoe UI, sans-serif; margin: 24px; }}
-    table {{ border-collapse: collapse; width: 100%; }}
-    th, td {{ border: 1px solid #ccc; padding: 8px; text-align: left; }}
-    th {{ background: #1f4b99; color: #fff; }}
-  </style>
+  <link rel="stylesheet" href="site.css">
 </head>
 <body>
-  <h1>Order API test cases</h1>
-  <p>Total {report["total"]} · Passed {report["passed"]} · Failed {report["failed"]}</p>
-  <table>
-    <thead>
-      <tr><th>Case</th><th>Method</th><th>Path</th><th>Expected</th><th>Actual</th><th>Review</th></tr>
-    </thead>
-    <tbody>
-      {''.join(rows)}
-    </tbody>
-  </table>
+  <header>
+    <h1>Order API</h1>
+    <p>Test results from the Jenkins run.</p>
+  </header>
+  <div class="wrap">
+    <div class="stats">
+      <div class="stat">Total<b>{report["total"]}</b></div>
+      <div class="stat">Passed<b>{report["passed"]}</b></div>
+      <div class="stat">Failed<b>{report["failed"]}</b></div>
+    </div>
+    <section class="panel">
+      <h2>Test cases</h2>
+      <table>
+        <thead>
+          <tr><th>Case</th><th>Method</th><th>Path</th><th>Expected</th><th>Actual</th><th>Review</th></tr>
+        </thead>
+        <tbody>
+          {''.join(rows)}
+        </tbody>
+      </table>
+    </section>
+  </div>
 </body>
 </html>
 """
-    with open(path, "w", encoding="utf-8") as handle:
+    html_path = os.path.join(folder, "index.html")
+    css_path = os.path.join(folder, "site.css")
+    with open(html_path, "w", encoding="utf-8") as handle:
         handle.write(page)
+    with open(css_path, "w", encoding="utf-8") as handle:
+        handle.write(SITE_CSS)
+    return html_path
 
 
 def run_tests():
     root = os.path.dirname(os.path.abspath(__file__))
     results_path = os.path.join(root, "test-results.json")
     junit_path = os.path.join(root, "test-results.xml")
-    sheet_path = os.path.join(root, "test-report.html")
+    sheet_dir = os.path.join(root, "report")
     port = _free_port()
     env = os.environ.copy()
     env["PORT"] = str(port)
@@ -377,7 +420,7 @@ def run_tests():
         json.dump(report, handle, indent=2)
         handle.write("\n")
     _write_junit(junit_path, results)
-    _write_sheet(sheet_path, report)
+    sheet_path = _write_sheet(sheet_dir, report)
     print(json.dumps({"total": report["total"], "passed": report["passed"], "failed": report["failed"]}))
     print(f"Wrote {results_path}")
     print(f"Wrote {junit_path}")
